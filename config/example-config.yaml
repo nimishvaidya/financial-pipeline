@@ -1,0 +1,109 @@
+# =============================================================================
+# Financial Pipeline — Example Configuration
+# =============================================================================
+# Copy this file to config.yaml and fill in your real values.
+# config.yaml is gitignored — your personal data stays private.
+# =============================================================================
+
+# --- Your income sources ---
+income:
+  salary:
+    amount: 5000          # Monthly take-home (after tax)
+    currency: USD
+    pay_schedule: monthly  # monthly | biweekly
+
+# --- Your current balances (update monthly) ---
+balances:
+  edu_loan:
+    amount: 2700000       # ₹27,00,000
+    currency: INR
+    interest_rate: 9.5    # Annual interest rate %
+    lender: "HDFC Credila"
+
+  car_loan:
+    amount: 15000         # $15,000
+    currency: USD
+    interest_rate: 6.5
+    lender: "Auto Lender"
+
+  emergency_fund:
+    amount: 0             # Current balance
+    currency: USD
+
+  investments:
+    amount: 0             # Current portfolio value
+    currency: USD
+
+# --- Fixed monthly expenses (deducted first, before % split) ---
+fixed_expenses:
+  - name: rent
+    amount: 1200
+    currency: USD
+  - name: car_payment
+    amount: 350
+    currency: USD
+  - name: electricity
+    amount: 100
+    currency: USD
+  - name: internet
+    amount: 60
+    currency: USD
+  - name: groceries
+    amount: 400
+    currency: USD
+
+# --- Pipeline buckets (split the REMAINDER after fixed expenses) ---
+# Percentages must add up to 100
+buckets:
+  - name: edu_loan
+    percentage: 50
+    target_currency: INR
+    description: "Education loan repayment to HDFC Credila"
+    # Dynamic rules: adjust allocation as conditions change
+    rules:
+      - when: "edu_loan.balance < 2000000"    # Below ₹20L
+        percentage: 40
+      - when: "edu_loan.balance < 1000000"    # Below ₹10L
+        percentage: 25
+      - when: "edu_loan.balance == 0"         # Paid off!
+        percentage: 0
+
+  - name: car_loan
+    percentage: 15
+    description: "Extra car loan payments above minimum"
+    rules:
+      - when: "car_loan.balance == 0"
+        percentage: 0
+
+  - name: emergency_fund
+    percentage: 20
+    description: "Safety net — 2 months of total expenses"
+    # Cap: once target reached, redistribute to other buckets
+    target:
+      type: months_of_expenses
+      months: 2            # 2x total monthly fixed expenses
+    rules:
+      - when: "emergency_fund.balance >= emergency_fund.target"
+        percentage: 0       # Stop filling, redistribute
+
+  - name: investing
+    percentage: 15
+    description: "Long-term investments — stocks, ETFs"
+    rules:
+      # As other buckets hit their targets, investing grows
+      - when: "edu_loan.balance < 1000000"
+        percentage: 35
+      - when: "edu_loan.balance == 0 and emergency_fund.balance >= emergency_fund.target"
+        percentage: 70
+
+# --- Exchange rate settings ---
+forex:
+  usd_inr:
+    # "manual" = you enter the rate, "api" = fetch live (Phase 4)
+    mode: manual
+    rate: 83.50            # Update this when you transfer
+
+# --- Display preferences ---
+display:
+  base_currency: USD
+  date_format: "YYYY-MM-DD"
