@@ -6,8 +6,17 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from pipeline.config_loader import load_config
+from pipeline.config_writer import (
+    get_full_config,
+    update_balances,
+    update_bucket_percentages,
+    update_fixed_expenses,
+    update_forex,
+    update_income,
+)
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
 
@@ -40,6 +49,9 @@ def _get_config() -> PipelineConfig:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
+# --- Read endpoints ---
+
+
 @app.get("/")
 def root():
     """Health check."""
@@ -61,6 +73,15 @@ def get_config():
         ],
         "display": config.display.model_dump(),
     }
+
+
+@app.get("/api/config/full")
+def get_config_full():
+    """Return the full raw config for the settings UI."""
+    try:
+        return get_full_config(CONFIG_PATH)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @app.get("/api/run", response_model=PipelineOutput)
@@ -92,3 +113,76 @@ def get_emergency_fund_status():
     config = _get_config()
     engine = PipelineEngine(config)
     return {"status": engine._emergency_fund_status()}
+
+
+# --- Update endpoints ---
+
+
+class UpdateBalancesRequest(BaseModel):
+    balances: dict  # {"edu_loan": {"amount": 2500000}, ...}
+
+
+@app.put("/api/balances")
+def put_balances(req: UpdateBalancesRequest):
+    """Update balance amounts."""
+    try:
+        updated = update_balances(CONFIG_PATH, req.balances)
+        return {"status": "ok", "balances": updated}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+class UpdateIncomeRequest(BaseModel):
+    income: dict  # {"salary": {"amount": 5500}}
+
+
+@app.put("/api/income")
+def put_income(req: UpdateIncomeRequest):
+    """Update income values."""
+    try:
+        updated = update_income(CONFIG_PATH, req.income)
+        return {"status": "ok", "income": updated}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+class UpdateExpensesRequest(BaseModel):
+    expenses: list[dict]  # [{"name": "rent", "amount": 1200, "currency": "USD"}, ...]
+
+
+@app.put("/api/expenses")
+def put_expenses(req: UpdateExpensesRequest):
+    """Update fixed expenses."""
+    try:
+        updated = update_fixed_expenses(CONFIG_PATH, req.expenses)
+        return {"status": "ok", "fixed_expenses": updated}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+class UpdateBucketsRequest(BaseModel):
+    buckets: dict  # {"edu_loan": 40, "investing": 30}
+
+
+@app.put("/api/buckets")
+def put_buckets(req: UpdateBucketsRequest):
+    """Update bucket percentages."""
+    try:
+        updated = update_bucket_percentages(CONFIG_PATH, req.buckets)
+        return {"status": "ok", "buckets": updated}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+class UpdateForexRequest(BaseModel):
+    forex: dict  # {"usd_inr": {"rate": 84.50}}
+
+
+@app.put("/api/forex")
+def put_forex(req: UpdateForexRequest):
+    """Update forex rates."""
+    try:
+        updated = update_forex(CONFIG_PATH, req.forex)
+        return {"status": "ok", "forex": updated}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
