@@ -26,5 +26,6 @@ config/config.yaml
 .env.local
 
 # === Database ===
+data/
 *.db
 *.sqlite3

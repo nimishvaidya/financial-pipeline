@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Dashboard from "./components/Dashboard";
+import History from "./components/History";
 import Settings from "./components/Settings";
 
 function App() {
@@ -91,6 +92,12 @@ function App() {
               Dashboard
             </NavButton>
             <NavButton
+              active={page === "history"}
+              onClick={() => setPage("history")}
+            >
+              History
+            </NavButton>
+            <NavButton
               active={page === "settings"}
               onClick={() => setPage("settings")}
             >
@@ -104,6 +111,7 @@ function App() {
         {page === "dashboard" && (
           <Dashboard data={pipelineData} onRefresh={fetchPipelineData} />
         )}
+        {page === "history" && <History />}
         {page === "settings" && (
           <Settings onSaved={handleSettingsSaved} />
         )}

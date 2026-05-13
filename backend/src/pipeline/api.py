@@ -17,13 +17,21 @@ from pipeline.config_writer import (
     update_forex,
     update_income,
 )
+from pipeline.database import (
+    get_balance_history,
+    get_connection,
+    get_net_worth_history,
+    get_run_history,
+    save_pipeline_run,
+)
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
+from pipeline.projections import calculate_emergency_fund_projection, calculate_loan_payoff
 
 app = FastAPI(
     title="Financial Pipeline API",
     description="Config-driven salary splitting, loan tracking, and investment allocation",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # Allow React frontend to call the API
@@ -55,7 +63,7 @@ def _get_config() -> PipelineConfig:
 @app.get("/")
 def root():
     """Health check."""
-    return {"status": "ok", "service": "financial-pipeline", "version": "0.1.0"}
+    return {"status": "ok", "service": "financial-pipeline", "version": "0.2.0"}
 
 
 @app.get("/api/config")
@@ -92,6 +100,41 @@ def run_pipeline():
     return engine.run()
 
 
+@app.post("/api/run")
+def run_and_save_pipeline():
+    """Run the pipeline AND save a snapshot to history."""
+    config = _get_config()
+    engine = PipelineEngine(config)
+    result = engine.run()
+
+    # Save to database
+    conn = get_connection()
+    try:
+        balances = {
+            name: {
+                "amount": bal.amount,
+                "currency": bal.currency.value,
+                "interest_rate": bal.interest_rate,
+            }
+            for name, bal in config.balances.items()
+        }
+
+        run_id = save_pipeline_run(
+            conn=conn,
+            run_date=result.run_date,
+            total_income=result.total_income,
+            total_fixed_expenses=result.total_fixed_expenses,
+            remainder=result.remainder_for_buckets,
+            allocations=[a.model_dump() for a in result.allocations],
+            instructions=[i.model_dump() for i in result.transfer_instructions],
+            emergency_fund_status=result.emergency_fund_status,
+            balances=balances,
+        )
+        return {"status": "ok", "run_id": run_id, "result": result}
+    finally:
+        conn.close()
+
+
 @app.get("/api/balances")
 def get_balances():
     """Return current balances for all tracked accounts."""
@@ -115,11 +158,131 @@ def get_emergency_fund_status():
     return {"status": engine._emergency_fund_status()}
 
 
+# --- History endpoints ---
+
+
+@app.get("/api/history/runs")
+def get_history():
+    """Get recent pipeline run history."""
+    conn = get_connection()
+    try:
+        return get_run_history(conn)
+    finally:
+        conn.close()
+
+
+@app.get("/api/history/balances")
+def get_history_balances(account: str | None = None):
+    """Get balance history over time, optionally filtered by account."""
+    conn = get_connection()
+    try:
+        return get_balance_history(conn, account)
+    finally:
+        conn.close()
+
+
+@app.get("/api/history/net-worth")
+def get_history_net_worth():
+    """Get net worth history over time."""
+    conn = get_connection()
+    try:
+        return get_net_worth_history(conn)
+    finally:
+        conn.close()
+
+
+# --- Projection endpoints ---
+
+
+@app.get("/api/projections/loan/{loan_name}")
+def get_loan_projection(loan_name: str):
+    """Get loan payoff projection for a specific loan."""
+    config = _get_config()
+
+    # Find the loan balance
+    if loan_name not in config.balances:
+        raise HTTPException(status_code=404, detail=f"Loan '{loan_name}' not found")
+
+    balance = config.balances[loan_name]
+
+    # Find how much is allocated to this loan
+    engine = PipelineEngine(config)
+    result = engine.run()
+    monthly_payment = 0.0
+    for alloc in result.allocations:
+        if alloc.bucket_name == loan_name:
+            monthly_payment = alloc.amount
+            break
+
+    # For loans with INR currency, use the converted amount
+    loan_balance = balance.amount
+    if balance.currency.value == "INR" and monthly_payment > 0:
+        # Convert monthly payment to INR
+        forex_rate = 83.50
+        if "usd_inr" in config.forex:
+            forex_rate = config.forex["usd_inr"].rate
+        monthly_payment_inr = monthly_payment * forex_rate
+        projection = calculate_loan_payoff(
+            loan_name=loan_name,
+            balance=loan_balance,
+            currency="INR",
+            annual_interest_rate=balance.interest_rate,
+            monthly_payment=monthly_payment_inr,
+        )
+    else:
+        projection = calculate_loan_payoff(
+            loan_name=loan_name,
+            balance=loan_balance,
+            currency=balance.currency.value,
+            annual_interest_rate=balance.interest_rate,
+            monthly_payment=monthly_payment,
+        )
+
+    return {
+        "loan_name": projection.loan_name,
+        "current_balance": projection.current_balance,
+        "currency": projection.currency,
+        "monthly_payment": projection.monthly_payment,
+        "interest_rate": projection.interest_rate,
+        "months_remaining": projection.months_remaining,
+        "payoff_date": projection.payoff_date,
+        "total_interest_paid": projection.total_interest_paid,
+        "monthly_breakdown": projection.monthly_breakdown,
+    }
+
+
+@app.get("/api/projections/emergency-fund")
+def get_emergency_fund_projection():
+    """Get emergency fund projection."""
+    config = _get_config()
+    engine = PipelineEngine(config)
+    result = engine.run()
+
+    # Find emergency fund allocation
+    monthly_contribution = 0.0
+    for alloc in result.allocations:
+        if alloc.bucket_name == "emergency_fund":
+            monthly_contribution = alloc.amount
+            break
+
+    current_balance = config.balances.get("emergency_fund")
+    if not current_balance:
+        raise HTTPException(status_code=404, detail="No emergency fund configured")
+
+    target = engine._calculate_target("emergency_fund")
+
+    return calculate_emergency_fund_projection(
+        current_balance=current_balance.amount,
+        monthly_contribution=monthly_contribution,
+        target=target,
+    )
+
+
 # --- Update endpoints ---
 
 
 class UpdateBalancesRequest(BaseModel):
-    balances: dict  # {"edu_loan": {"amount": 2500000}, ...}
+    balances: dict
 
 
 @app.put("/api/balances")
@@ -133,7 +296,7 @@ def put_balances(req: UpdateBalancesRequest):
 
 
 class UpdateIncomeRequest(BaseModel):
-    income: dict  # {"salary": {"amount": 5500}}
+    income: dict
 
 
 @app.put("/api/income")
@@ -147,7 +310,7 @@ def put_income(req: UpdateIncomeRequest):
 
 
 class UpdateExpensesRequest(BaseModel):
-    expenses: list[dict]  # [{"name": "rent", "amount": 1200, "currency": "USD"}, ...]
+    expenses: list[dict]
 
 
 @app.put("/api/expenses")
@@ -161,7 +324,7 @@ def put_expenses(req: UpdateExpensesRequest):
 
 
 class UpdateBucketsRequest(BaseModel):
-    buckets: dict  # {"edu_loan": 40, "investing": 30}
+    buckets: dict
 
 
 @app.put("/api/buckets")
@@ -175,7 +338,7 @@ def put_buckets(req: UpdateBucketsRequest):
 
 
 class UpdateForexRequest(BaseModel):
-    forex: dict  # {"usd_inr": {"rate": 84.50}}
+    forex: dict
 
 
 @app.put("/api/forex")
