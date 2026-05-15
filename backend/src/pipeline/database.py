@@ -59,9 +59,20 @@ def _create_tables(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (run_id) REFERENCES pipeline_runs(id)
         );
 
+        CREATE TABLE IF NOT EXISTS extra_income (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            income_date TEXT NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'USD',
+            category TEXT NOT NULL DEFAULT 'bonus',
+            note TEXT,
+            created_at TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_runs_date ON pipeline_runs(run_date);
         CREATE INDEX IF NOT EXISTS idx_snapshots_run ON balance_snapshots(run_id);
         CREATE INDEX IF NOT EXISTS idx_networth_date ON net_worth_history(run_date);
+        CREATE INDEX IF NOT EXISTS idx_extra_income_date ON extra_income(income_date);
     """)
 
 
@@ -213,3 +224,37 @@ def get_latest_balances(conn: sqlite3.Connection) -> dict[str, dict]:
     ).fetchall()
 
     return {row["account_name"]: dict(row) for row in rows}
+
+
+def add_extra_income(conn, income_date, amount, currency, category, note):
+    """Add a one-time extra income entry."""
+    now = datetime.now().isoformat()
+    cursor = conn.execute(
+        "INSERT INTO extra_income (income_date, amount, currency, category, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (income_date, amount, currency, category, note, now)
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+def get_extra_income(conn, year=None, month=None):
+    """Get extra income entries, optionally filtered by year/month."""
+    if year and month:
+        rows = conn.execute(
+            "SELECT * FROM extra_income WHERE income_date LIKE ? ORDER BY income_date DESC",
+            (f"{year}-{month:02d}%",)
+        ).fetchall()
+    elif year:
+        rows = conn.execute(
+            "SELECT * FROM extra_income WHERE income_date LIKE ? ORDER BY income_date DESC",
+            (f"{year}%",)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM extra_income ORDER BY income_date DESC"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+def delete_extra_income(conn, income_id):
+    """Delete an extra income entry by ID."""
+    conn.execute("DELETE FROM extra_income WHERE id = ?", (income_id,))
+    conn.commit()

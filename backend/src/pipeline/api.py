@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,8 +19,11 @@ from pipeline.config_writer import (
     update_income,
 )
 from pipeline.database import (
+    add_extra_income,
+    delete_extra_income,
     get_balance_history,
     get_connection,
+    get_extra_income,
     get_net_worth_history,
     get_run_history,
     save_pipeline_run,
@@ -276,6 +280,47 @@ def get_emergency_fund_projection():
         monthly_contribution=monthly_contribution,
         target=target,
     )
+
+
+# --- Extra Income endpoints ---
+
+class AddExtraIncomeRequest(BaseModel):
+    income_date: str
+    amount: float
+    currency: str = "USD"
+    category: str = "bonus"
+    note: str | None = None
+
+@app.get("/api/extra-income")
+def list_extra_income(year: int | None = None, month: int | None = None):
+    """List extra income entries, optionally filtered by year/month."""
+    conn = get_connection()
+    try:
+        return get_extra_income(conn, year, month)
+    finally:
+        conn.close()
+
+@app.post("/api/extra-income")
+def create_extra_income(req: AddExtraIncomeRequest):
+    """Add a one-time extra income entry."""
+    conn = get_connection()
+    try:
+        income_id = add_extra_income(
+            conn, req.income_date, req.amount, req.currency, req.category, req.note
+        )
+        return {"status": "ok", "id": income_id}
+    finally:
+        conn.close()
+
+@app.delete("/api/extra-income/{income_id}")
+def remove_extra_income(income_id: int):
+    """Delete an extra income entry."""
+    conn = get_connection()
+    try:
+        delete_extra_income(conn, income_id)
+        return {"status": "ok"}
+    finally:
+        conn.close()
 
 
 # --- Update endpoints ---

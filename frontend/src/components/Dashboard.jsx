@@ -1,9 +1,20 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import IncomeTimeline from "./IncomeTimeline";
+import RecurringExpenses from "./RecurringExpenses";
 
 const COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"];
 
 function Dashboard({ data, onRefresh }) {
   const { allocations, transfer_instructions, emergency_fund_status } = data;
+
+  // Extract fixed expenses for the RecurringExpenses component
+  const fixedExpenses = transfer_instructions
+    .filter((t) => t.notes === "Fixed monthly expense")
+    .map((t) => ({
+      name: t.destination,
+      amount: t.amount,
+      currency: "USD",
+    }));
 
   // Prepare pie chart data
   const chartData = allocations.map((a) => ({
@@ -171,6 +182,16 @@ function Dashboard({ data, onRefresh }) {
           )}
         </div>
       </div>
+
+      {/* Income Timeline */}
+      <IncomeTimeline
+        salaryAmount={data.total_income}
+        payday={1}
+        currency="USD"
+      />
+
+      {/* Recurring Expenses */}
+      <RecurringExpenses expenses={fixedExpenses} />
 
       {/* Transfer Instructions */}
       <div
