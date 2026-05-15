@@ -149,7 +149,7 @@ function Settings({ onSaved }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading settings...</div>
+        <div style={{ color: "var(--color-text-secondary)" }}>Loading settings...</div>
       </div>
     );
   }
@@ -160,17 +160,30 @@ function Settings({ onSaved }) {
     (sum, b) => sum + (b.percentage || 0),
     0
   );
+  const bucketsValid = Math.abs(totalPct - 100) < 0.01;
 
   return (
     <div className="space-y-8">
       {/* Toast message */}
       {message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 ${
-            message.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : "bg-red-100 text-red-800 border border-red-200"
-          }`}
+          className="fixed top-4 right-4 px-4 py-3 rounded-lg text-sm font-medium z-50"
+          style={{
+            backgroundColor:
+              message.type === "success"
+                ? "var(--color-success-light)"
+                : "var(--color-danger-light)",
+            color:
+              message.type === "success"
+                ? "var(--color-success)"
+                : "var(--color-danger)",
+            border: `1px solid ${
+              message.type === "success"
+                ? "var(--color-success)"
+                : "var(--color-danger)"
+            }`,
+            boxShadow: "var(--shadow-lg)",
+          }}
         >
           {message.text}
         </div>
@@ -180,11 +193,7 @@ function Settings({ onSaved }) {
       <Section title="Income" onSave={saveIncome} saving={saving}>
         {Object.entries(config.income || {}).map(([name, data]) => (
           <div key={name} className="grid grid-cols-3 gap-4">
-            <Field
-              label="Source"
-              value={name}
-              disabled
-            />
+            <Field label="Source" value={name} disabled />
             <Field
               label="Amount (monthly)"
               type="number"
@@ -199,17 +208,18 @@ function Settings({ onSaved }) {
                 })
               }
             />
-            <Field
-              label="Currency"
-              value={data.currency}
-              disabled
-            />
+            <Field label="Currency" value={data.currency} disabled />
           </div>
         ))}
       </Section>
 
       {/* Balances */}
-      <Section title="Current Balances" subtitle="Update these monthly to keep your pipeline accurate" onSave={saveBalances} saving={saving}>
+      <Section
+        title="Current Balances"
+        subtitle="Update these monthly to keep your pipeline accurate"
+        onSave={saveBalances}
+        saving={saving}
+      >
         {Object.entries(config.balances || {}).map(([name, data]) => (
           <div key={name} className="grid grid-cols-4 gap-4">
             <Field
@@ -252,7 +262,11 @@ function Settings({ onSaved }) {
       </Section>
 
       {/* Fixed Expenses */}
-      <Section title="Fixed Monthly Expenses" onSave={saveExpenses} saving={saving}>
+      <Section
+        title="Fixed Monthly Expenses"
+        onSave={saveExpenses}
+        saving={saving}
+      >
         {(config.fixed_expenses || []).map((exp, i) => (
           <div key={i} className="grid grid-cols-4 gap-4 items-end">
             <Field
@@ -277,7 +291,8 @@ function Settings({ onSaved }) {
             <Field label="Currency" value={exp.currency} disabled />
             <button
               onClick={() => removeExpense(i)}
-              className="text-red-500 hover:text-red-700 text-sm pb-1"
+              className="text-sm pb-1"
+              style={{ color: "var(--color-danger)" }}
             >
               Remove
             </button>
@@ -285,14 +300,19 @@ function Settings({ onSaved }) {
         ))}
         <button
           onClick={addExpense}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium mt-2"
+          className="text-sm font-medium mt-2"
+          style={{ color: "var(--color-primary)" }}
         >
           + Add expense
         </button>
       </Section>
 
       {/* Bucket Percentages */}
-      <Section title="Allocation Buckets" onSave={saveBuckets} saving={saving}>
+      <Section
+        title="Allocation Buckets"
+        onSave={saveBuckets}
+        saving={saving}
+      >
         {(config.buckets || []).map((bucket, i) => (
           <div key={bucket.name} className="grid grid-cols-3 gap-4">
             <Field
@@ -321,8 +341,11 @@ function Settings({ onSaved }) {
             />
           </div>
         ))}
-        <div className={`text-sm mt-2 font-medium ${Math.abs(totalPct - 100) < 0.01 ? "text-green-600" : "text-red-600"}`}>
-          Total: {totalPct}% {Math.abs(totalPct - 100) >= 0.01 && "(must equal 100%)"}
+        <div
+          className="text-sm mt-2 font-medium"
+          style={{ color: bucketsValid ? "var(--color-success)" : "var(--color-danger)" }}
+        >
+          Total: {totalPct}% {!bucketsValid && "(must equal 100%)"}
         </div>
       </Section>
 
@@ -360,16 +383,44 @@ function Settings({ onSaved }) {
 
 function Section({ title, subtitle, children, onSave, saving }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div
+      className="rounded-2xl p-6"
+      style={{
+        backgroundColor: "var(--color-bg-card)",
+        boxShadow: "var(--shadow-md)",
+      }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--color-text)" }}
+          >
+            {title}
+          </h2>
+          {subtitle && (
+            <p
+              className="text-xs mt-0.5"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
         <button
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50"
+          style={{
+            backgroundColor: "var(--color-primary)",
+            color: "#ffffff",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "var(--color-primary-hover)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.backgroundColor = "var(--color-primary)")
+          }
         >
           {saving ? "Saving..." : "Save"}
         </button>
@@ -382,7 +433,10 @@ function Section({ title, subtitle, children, onSave, saving }) {
 function Field({ label, value, onChange, type = "text", disabled = false, step }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1 capitalize">
+      <label
+        className="block text-xs font-medium mb-1 capitalize"
+        style={{ color: "var(--color-text-muted)" }}
+      >
         {label}
       </label>
       <input
@@ -391,11 +445,26 @@ function Field({ label, value, onChange, type = "text", disabled = false, step }
         value={value}
         disabled={disabled}
         onChange={(e) => onChange?.(e.target.value)}
-        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
-          disabled
-            ? "bg-gray-50 text-gray-500"
-            : "bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        }`}
+        className="w-full px-3 py-2 rounded-lg text-sm"
+        style={{
+          backgroundColor: disabled
+            ? "var(--color-bg-badge)"
+            : "var(--color-bg-input)",
+          color: disabled ? "var(--color-text-secondary)" : "var(--color-text)",
+          border: "1px solid var(--color-border-input)",
+          outline: "none",
+        }}
+        onFocus={(e) => {
+          if (!disabled) {
+            e.currentTarget.style.boxShadow =
+              "0 0 0 2px var(--color-primary)";
+            e.currentTarget.style.borderColor = "var(--color-primary)";
+          }
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.borderColor = "var(--color-border-input)";
+        }}
       />
     </div>
   );

@@ -37,8 +37,17 @@ function Dashboard({ data, onRefresh }) {
       {/* Allocation Chart + List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Pie Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            backgroundColor: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: "var(--color-text)" }}
+          >
             Allocation Split
           </h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -61,6 +70,15 @@ function Dashboard({ data, onRefresh }) {
               </Pie>
               <Tooltip
                 formatter={(value) => `$${value.toLocaleString()}`}
+                contentStyle={{
+                  backgroundColor: "var(--color-bg-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "0.5rem",
+                  color: "var(--color-text)",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+                labelStyle={{ color: "var(--color-text)" }}
+                itemStyle={{ color: "var(--color-text-secondary)" }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -72,16 +90,29 @@ function Dashboard({ data, onRefresh }) {
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 />
-                <span className="text-gray-600 capitalize">{item.name}</span>
-                <span className="text-gray-400">({item.percentage}%)</span>
+                <span className="capitalize" style={{ color: "var(--color-text-secondary)" }}>
+                  {item.name}
+                </span>
+                <span style={{ color: "var(--color-text-muted)" }}>
+                  ({item.percentage}%)
+                </span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Allocation Details */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            backgroundColor: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: "var(--color-text)" }}
+          >
             Bucket Breakdown
           </h2>
           <div className="space-y-4">
@@ -93,18 +124,26 @@ function Dashboard({ data, onRefresh }) {
                     style={{ backgroundColor: COLORS[i % COLORS.length] }}
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-900 capitalize">
+                    <div
+                      className="text-sm font-medium capitalize"
+                      style={{ color: "var(--color-text)" }}
+                    >
                       {alloc.bucket_name.replace(/_/g, " ")}
                     </div>
-                    <div className="text-xs text-gray-500">{alloc.description}</div>
+                    <div className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                      {alloc.description}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">
+                  <div
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--color-text)" }}
+                  >
                     ${alloc.amount.toLocaleString()}
                   </div>
                   {alloc.converted_amount && (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                       ≈ ₹{alloc.converted_amount.toLocaleString()}
                     </div>
                   )}
@@ -115,25 +154,45 @@ function Dashboard({ data, onRefresh }) {
 
           {/* Emergency Fund Status */}
           {emergency_fund_status && (
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+            <div
+              className="mt-6 pt-4 border-t"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <div
+                className="text-xs uppercase tracking-wide mb-1"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 Emergency Fund
               </div>
-              <div className="text-sm text-gray-700">{emergency_fund_status}</div>
+              <div className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                {emergency_fund_status}
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Transfer Instructions */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          backgroundColor: "var(--color-bg-card)",
+          boxShadow: "var(--shadow-md)",
+        }}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--color-text)" }}
+          >
             Transfer Instructions
           </h2>
           <button
             onClick={onRefresh}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-sm font-medium transition-colors"
+            style={{ color: "var(--color-primary)" }}
+            onMouseEnter={(e) => (e.target.style.color = "var(--color-primary-hover)")}
+            onMouseLeave={(e) => (e.target.style.color = "var(--color-primary)")}
           >
             Recalculate
           </button>
@@ -142,17 +201,30 @@ function Dashboard({ data, onRefresh }) {
           {transfer_instructions.map((inst) => (
             <div
               key={inst.step}
-              className="flex items-start gap-4 p-3 rounded-lg bg-gray-50"
+              className="flex items-start gap-4 p-3 rounded-lg"
+              style={{ backgroundColor: "var(--color-bg-badge)" }}
             >
-              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold shrink-0">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                style={{
+                  backgroundColor: "var(--color-primary-light)",
+                  color: "var(--color-primary-text)",
+                }}
+              >
                 {inst.step}
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-900">
+                <div
+                  className="text-sm font-medium"
+                  style={{ color: "var(--color-text)" }}
+                >
                   {inst.action}
                 </div>
                 {inst.notes && (
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div
+                    className="text-xs mt-0.5"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
                     {inst.notes}
                   </div>
                 )}
@@ -168,19 +240,31 @@ function Dashboard({ data, onRefresh }) {
 function SummaryCard({ label, value, sub, highlight = false }) {
   return (
     <div
-      className={`rounded-lg shadow p-6 ${
-        highlight ? "bg-blue-50 border border-blue-200" : "bg-white"
-      }`}
+      className="rounded-2xl p-6"
+      style={{
+        backgroundColor: highlight ? "var(--color-primary-light)" : "var(--color-bg-card)",
+        boxShadow: "var(--shadow-md)",
+        border: highlight ? "1px solid var(--color-primary-light)" : "none",
+      }}
     >
-      <div className="text-sm text-gray-500">{label}</div>
       <div
-        className={`text-2xl font-bold mt-1 ${
-          highlight ? "text-blue-700" : "text-gray-900"
-        }`}
+        className="text-sm"
+        style={{ color: highlight ? "var(--color-primary-text)" : "var(--color-text-secondary)" }}
+      >
+        {label}
+      </div>
+      <div
+        className="text-2xl font-bold mt-1"
+        style={{ color: highlight ? "var(--color-primary-text)" : "var(--color-text)" }}
       >
         {value}
       </div>
-      <div className="text-xs text-gray-400 mt-1">{sub}</div>
+      <div
+        className="text-xs mt-1"
+        style={{ color: highlight ? "var(--color-primary-text)" : "var(--color-text-muted)" }}
+      >
+        {sub}
+      </div>
     </div>
   );
 }

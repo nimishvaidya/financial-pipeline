@@ -73,7 +73,7 @@ function History() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading history...</div>
+        <div style={{ color: "var(--color-text-secondary)" }}>Loading history...</div>
       </div>
     );
   }
@@ -83,24 +83,48 @@ function History() {
       {/* Toast */}
       {message && (
         <div
-          className={`fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 ${
-            message.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : "bg-red-100 text-red-800 border border-red-200"
-          }`}
+          className="fixed top-4 right-4 px-4 py-3 rounded-lg text-sm font-medium z-50"
+          style={{
+            background:
+              message.type === "success"
+                ? "var(--color-success-light)"
+                : "var(--color-danger-light)",
+            color:
+              message.type === "success"
+                ? "var(--color-success)"
+                : "var(--color-danger)",
+            border: `1px solid ${
+              message.type === "success"
+                ? "var(--color-success)"
+                : "var(--color-danger)"
+            }`,
+            boxShadow: "var(--shadow-lg)",
+          }}
         >
           {message.text}
         </div>
       )}
 
       {/* Save Snapshot Button */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          background: "var(--color-bg-card)",
+          boxShadow: "var(--shadow-md)",
+        }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2
+              className="text-lg font-semibold"
+              style={{ color: "var(--color-text)" }}
+            >
               Record Monthly Snapshot
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p
+              className="text-sm mt-1"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
               Save your current balances and allocation to track progress over
               time. Do this once a month after updating your balances.
             </p>
@@ -108,13 +132,26 @@ function History() {
           <button
             onClick={saveSnapshot}
             disabled={saving}
-            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 shrink-0"
+            className="px-6 py-3 font-medium rounded-lg disabled:opacity-50 shrink-0"
+            style={{
+              background: "var(--color-primary)",
+              color: "#fff",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "var(--color-primary-hover)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "var(--color-primary)")
+            }
           >
             {saving ? "Saving..." : "Save Snapshot"}
           </button>
         </div>
         {runs.length > 0 && (
-          <p className="text-xs text-gray-400 mt-3">
+          <p
+            className="text-xs mt-3"
+            style={{ color: "var(--color-text-muted)" }}
+          >
             Last snapshot: {runs[0].run_date} ({runs.length} total)
           </p>
         )}
@@ -122,13 +159,22 @@ function History() {
 
       {/* Net Worth Chart */}
       {netWorth.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: "var(--color-text)" }}
+          >
             Net Worth Over Time
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={netWorth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="run_date"
                 tick={{ fontSize: 12 }}
@@ -153,13 +199,22 @@ function History() {
 
       {/* Balance History Chart */}
       {balanceChartData.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: "var(--color-text)" }}
+          >
             Balance Trends
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={balanceChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 12 }}
@@ -189,8 +244,17 @@ function History() {
 
       {/* Loan Payoff Projection */}
       {loanProjection && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-2"
+            style={{ color: "var(--color-text)" }}
+          >
             Education Loan Payoff Projection
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -212,7 +276,10 @@ function History() {
               highlight
             />
           </div>
-          <div className="text-sm text-gray-500 mb-4">
+          <div
+            className="text-sm mb-4"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             Total interest you'll pay: ₹
             {Math.round(loanProjection.total_interest_paid).toLocaleString()}
           </div>
@@ -221,10 +288,12 @@ function History() {
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart
               data={loanProjection.monthly_breakdown.filter(
-                (_, i) => i % 3 === 0 || i === loanProjection.monthly_breakdown.length - 1
+                (_, i) =>
+                  i % 3 === 0 ||
+                  i === loanProjection.monthly_breakdown.length - 1
               )}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11 }}
@@ -252,8 +321,17 @@ function History() {
 
       {/* Emergency Fund Projection */}
       {efProjection && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: "var(--color-text)" }}
+          >
             Emergency Fund Projection
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -286,11 +364,15 @@ function History() {
 
           {/* Progress bar */}
           <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-4">
+            <div
+              className="w-full rounded-full h-4"
+              style={{ background: "var(--color-bg-badge)" }}
+            >
               <div
-                className="bg-green-500 h-4 rounded-full transition-all"
+                className="h-4 rounded-full transition-all"
                 style={{
                   width: `${Math.min(efProjection.percentage || 0, 100)}%`,
+                  background: "var(--color-success)",
                 }}
               />
             </div>
@@ -300,12 +382,24 @@ function History() {
 
       {/* Empty state */}
       {netWorth.length === 0 && !loanProjection && (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div
+          className="rounded-2xl p-12 text-center"
+          style={{
+            background: "var(--color-bg-card)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
           <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: "var(--color-text)" }}
+          >
             No history yet
           </h3>
-          <p className="text-gray-500 max-w-md mx-auto">
+          <p
+            className="max-w-md mx-auto"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             Click "Save Snapshot" above to record your first data point. Come
             back each month to track your progress — you'll see your loan
             shrinking and savings growing over time.
@@ -318,14 +412,25 @@ function History() {
 
 function StatCard({ label, value, highlight = false }) {
   return (
-    <div className={`p-4 rounded-lg ${highlight ? "bg-blue-50" : "bg-gray-50"}`}>
-      <div className="text-xs text-gray-500 uppercase tracking-wide">
+    <div
+      className="p-4 rounded-xl"
+      style={{
+        background: highlight
+          ? "var(--color-primary-light)"
+          : "var(--color-bg-badge)",
+      }}
+    >
+      <div
+        className="text-xs uppercase tracking-wide"
+        style={{ color: "var(--color-text-secondary)" }}
+      >
         {label}
       </div>
       <div
-        className={`text-lg font-bold mt-1 ${
-          highlight ? "text-blue-700" : "text-gray-900"
-        }`}
+        className="text-lg font-bold mt-1"
+        style={{
+          color: highlight ? "var(--color-primary-text)" : "var(--color-text)",
+        }}
       >
         {value}
       </div>
