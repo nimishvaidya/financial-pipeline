@@ -28,6 +28,7 @@ from pipeline.database import (
     get_run_history,
     save_pipeline_run,
 )
+from pipeline.forex_service import get_rate, get_rate_for_engine
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
 from pipeline.projections import calculate_emergency_fund_projection, calculate_loan_payoff
@@ -123,6 +124,10 @@ def run_and_save_pipeline():
             for name, bal in config.balances.items()
         }
 
+        # Get live forex rate for net worth calculation
+        live_rate = get_rate_for_engine(conn, "USD", "INR",
+            fallback=config.forex.get("usd_inr", type("", (), {"rate": 83.50})).rate)
+
         run_id = save_pipeline_run(
             conn=conn,
             run_date=result.run_date,
@@ -133,6 +138,7 @@ def run_and_save_pipeline():
             instructions=[i.model_dump() for i in result.transfer_instructions],
             emergency_fund_status=result.emergency_fund_status,
             balances=balances,
+            usd_inr_rate=live_rate,
         )
         return {"status": "ok", "run_id": run_id, "result": result}
     finally:
@@ -221,10 +227,13 @@ def get_loan_projection(loan_name: str):
     # For loans with INR currency, use the converted amount
     loan_balance = balance.amount
     if balance.currency.value == "INR" and monthly_payment > 0:
-        # Convert monthly payment to INR
-        forex_rate = 83.50
-        if "usd_inr" in config.forex:
-            forex_rate = config.forex["usd_inr"].rate
+        # Convert monthly payment to INR — use live rate, fall back to config
+        conn_fx = get_connection()
+        try:
+            forex_rate = get_rate_for_engine(conn_fx, "USD", "INR",
+                fallback=config.forex.get("usd_inr", type("", (), {"rate": 83.50})).rate)
+        finally:
+            conn_fx.close()
         monthly_payment_inr = monthly_payment * forex_rate
         projection = calculate_loan_payoff(
             loan_name=loan_name,
@@ -280,6 +289,31 @@ def get_emergency_fund_projection():
         monthly_contribution=monthly_contribution,
         target=target,
     )
+
+
+# --- Live Forex endpoints ---
+
+
+@app.get("/api/forex/live")
+def get_live_forex(base: str = "USD", target: str = "INR"):
+    """Get current exchange rate with cache info."""
+    conn = get_connection()
+    try:
+        result = get_rate(conn, base, target)
+        return result
+    finally:
+        conn.close()
+
+
+@app.post("/api/forex/refresh")
+def refresh_forex(base: str = "USD", target: str = "INR"):
+    """Force refresh the exchange rate from API."""
+    conn = get_connection()
+    try:
+        result = get_rate(conn, base, target, force_refresh=True)
+        return result
+    finally:
+        conn.close()
 
 
 # --- Extra Income endpoints ---

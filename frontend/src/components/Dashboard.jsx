@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import IncomeTimeline from "./IncomeTimeline";
 import RecurringExpenses from "./RecurringExpenses";
+import ForexRate from "./ForexRate";
 
 const COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899"];
 
@@ -44,6 +45,9 @@ function Dashboard({ data, onRefresh }) {
           highlight
         />
       </div>
+
+      {/* Live Forex Rate */}
+      <ForexRate />
 
       {/* Allocation Chart + List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -86,6 +86,7 @@ def save_pipeline_run(
     instructions: list[dict],
     emergency_fund_status: str,
     balances: dict[str, dict],
+    usd_inr_rate: float = 83.50,
 ) -> int:
     """Save a pipeline run and its balance snapshot.
 
@@ -132,7 +133,7 @@ def save_pipeline_run(
         if "loan" in name.lower():
             # Convert INR liabilities to USD for consistent tracking
             if bal["currency"] == "INR":
-                amount = amount / 83.50  # TODO: use actual forex rate
+                amount = amount / usd_inr_rate
             liabilities += amount
         else:
             assets += amount
