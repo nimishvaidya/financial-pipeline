@@ -103,6 +103,11 @@ forex:
     mode: manual
     rate: 83.50            # Update this when you transfer
 
+# --- Telegram bot ---
+telegram:
+  bot_token: "YOUR_BOT_TOKEN_HERE"   # Get from @BotFather
+  allowed_user_ids: []                # Your Telegram user ID (for security)
+
 # --- Display preferences ---
 display:
   base_currency: USD
