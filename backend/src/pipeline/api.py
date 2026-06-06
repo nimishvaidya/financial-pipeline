@@ -29,6 +29,18 @@ from pipeline.database import (
     save_pipeline_run,
 )
 from pipeline.forex_service import get_rate, get_rate_for_engine
+from pipeline.portfolio import (
+    add_holding,
+    remove_holding,
+    get_portfolio_summary,
+    add_to_watchlist,
+    remove_from_watchlist,
+    get_watchlist,
+    check_dips,
+    get_pending_alerts,
+    acknowledge_alert,
+    get_stock_price,
+)
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
 from pipeline.projections import calculate_emergency_fund_projection, calculate_loan_payoff
@@ -352,6 +364,128 @@ def remove_extra_income(income_id: int):
     conn = get_connection()
     try:
         delete_extra_income(conn, income_id)
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+
+# --- Portfolio/Investment endpoints ---
+
+
+class AddHoldingRequest(BaseModel):
+    ticker: str
+    shares: float
+    avg_cost: float
+
+
+class WatchlistRequest(BaseModel):
+    ticker: str
+    threshold_pct: float = 5.0
+
+
+@app.get("/api/portfolio/summary")
+def portfolio_summary():
+    """Get portfolio summary with live prices."""
+    conn = get_connection()
+    try:
+        return get_portfolio_summary(conn)
+    finally:
+        conn.close()
+
+
+@app.post("/api/portfolio/holdings")
+def add_portfolio_holding(req: AddHoldingRequest):
+    """Add or update a holding."""
+    conn = get_connection()
+    try:
+        add_holding(conn, req.ticker, req.shares, req.avg_cost)
+        return {"status": "ok", "ticker": req.ticker.upper()}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/portfolio/holdings/{ticker}")
+def delete_portfolio_holding(ticker: str):
+    """Remove a holding."""
+    conn = get_connection()
+    try:
+        remove_holding(conn, ticker)
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+
+@app.get("/api/portfolio/price/{ticker}")
+def get_price(ticker: str):
+    """Get current stock price."""
+    conn = get_connection()
+    try:
+        result = get_stock_price(conn, ticker)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Could not fetch price for {ticker}")
+        return result
+    finally:
+        conn.close()
+
+
+@app.get("/api/portfolio/watchlist")
+def list_watchlist():
+    """Get the dip watchlist."""
+    conn = get_connection()
+    try:
+        return get_watchlist(conn)
+    finally:
+        conn.close()
+
+
+@app.post("/api/portfolio/watchlist")
+def add_watchlist_item(req: WatchlistRequest):
+    """Add a ticker to the dip watchlist."""
+    conn = get_connection()
+    try:
+        add_to_watchlist(conn, req.ticker, req.threshold_pct)
+        return {"status": "ok", "ticker": req.ticker.upper()}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/portfolio/watchlist/{ticker}")
+def remove_watchlist_item(ticker: str):
+    """Remove a ticker from the dip watchlist."""
+    conn = get_connection()
+    try:
+        remove_from_watchlist(conn, ticker)
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+
+@app.get("/api/portfolio/dip-check")
+def run_dip_check():
+    """Check watchlist for dips and return any new alerts."""
+    conn = get_connection()
+    try:
+        return check_dips(conn)
+    finally:
+        conn.close()
+
+
+@app.get("/api/portfolio/alerts")
+def list_alerts():
+    """Get pending dip alerts."""
+    conn = get_connection()
+    try:
+        return get_pending_alerts(conn)
+    finally:
+        conn.close()
+
+
+@app.post("/api/portfolio/alerts/{alert_id}/acknowledge")
+def ack_alert(alert_id: int):
+    """Acknowledge a dip alert."""
+    conn = get_connection()
+    try:
+        acknowledge_alert(conn, alert_id)
         return {"status": "ok"}
     finally:
         conn.close()

@@ -32,6 +32,18 @@ from pipeline.database import (
 )
 from pipeline.engine import PipelineEngine
 from pipeline.forex_service import get_rate, get_rate_for_engine
+from pipeline.portfolio import (
+    add_holding,
+    remove_holding,
+    get_portfolio_summary,
+    add_to_watchlist,
+    remove_from_watchlist,
+    get_watchlist,
+    check_dips,
+    get_pending_alerts,
+    acknowledge_alert,
+    get_stock_price,
+)
 from pipeline.projections import calculate_emergency_fund_projection, calculate_loan_payoff
 
 # ---------------------------------------------------------------------------
@@ -136,7 +148,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🎓 */loan* or */l* — Loan payoff projection\n"
         "🛡️ */emergency* or */ef* — Emergency fund status\n"
         "💱 */rate* or */r* — Live USD → INR rate\n"
-        "🏠 */expenses* or */e* — Fixed monthly expenses\n"
+        "🏠 */expenses* or */e* — Fixed monthly expenses\n\n"
+        "📊 *Investments:*\n"
+        "💼 */portfolio* or */p* — Portfolio summary\n"
+        "🛒 */buy* \\<ticker\\> \\<shares\\> \\<cost\\> — Add holding\n"
+        "💸 */sell* \\<ticker\\> — Remove holding\n"
+        "💲 */price* or */pr* \\<ticker\\> — Live stock price\n"
+        "👀 */watch* \\<ticker\\> \\[%\\] — Add to dip watchlist\n"
+        "🚫 */unwatch* \\<ticker\\> — Remove from watchlist\n"
+        "🔔 */dips* — Check for dip alerts\n\n"
         "💾 */save* — Save a pipeline snapshot\n"
         "🔄 */refresh* — Force\\-refresh forex rate\n"
         "✏️ */update* \\<name\\> \\<amount\\> — Update a balance\n"
@@ -631,6 +651,277 @@ async def cmd_expenses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 # ---------------------------------------------------------------------------
+# /portfolio (/p)
+# ---------------------------------------------------------------------------
+
+
+async def cmd_portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    conn = get_connection()
+    try:
+        summary = get_portfolio_summary(conn)
+    finally:
+        conn.close()
+
+    if not summary["holdings"]:
+        await update.message.reply_text(
+            "📊 *Portfolio*\n━━━━━━━━━━━\nNo holdings yet\\.\n\n"
+            "Add one with: `/buy AAPL 10 150`\n"
+            "\\(ticker, shares, avg cost\\)",
+            parse_mode="MarkdownV2",
+        )
+        return
+
+    total_val = summary["total_value"]
+    total_cst = summary["total_cost"]
+    total_gn = summary["total_gain"]
+    total_gn_pct = summary["total_gain_pct"]
+
+    lines = [
+        "📊 *Portfolio Summary*",
+        "━━━━━━━━━━━━━━━━━━━",
+        f"  Value:    {escape_md(f'${total_val:,.2f}')}",
+        f"  Cost:     {escape_md(f'${total_cst:,.2f}')}",
+    ]
+
+    gain_sign = "+" if total_gn >= 0 else ""
+    gain_icon = "📈" if total_gn >= 0 else "📉"
+    lines.append(
+        f"  {gain_icon} P/L:     {escape_md(f'{gain_sign}${total_gn:,.2f} ({gain_sign}{total_gn_pct:.2f}%)')}"
+    )
+    lines.append("")
+    lines.append("*Holdings:*")
+
+    for h in summary["holdings"]:
+        g_sign = "+" if h["gain"] >= 0 else ""
+        day_icon = "🟢" if h["day_change_pct"] >= 0 else "🔴"
+        ticker = h["ticker"]
+        cur_price = h["current_price"]
+        day_chg = h["day_change_pct"]
+        gain = h["gain"]
+        gain_pct = h["gain_pct"]
+        lines.append(
+            f"  `{ticker:<6}` {escape_md(f'${cur_price:.2f}')}  "
+            f"{day_icon} {escape_md(f'{day_chg:+.1f}%')}  "
+            f"{escape_md(f'{g_sign}${gain:,.0f} ({g_sign}{gain_pct:.1f}%)')}"
+        )
+
+    await update.message.reply_text(
+        "\n".join(lines).replace("\\`", "`"),
+        parse_mode="MarkdownV2",
+    )
+
+
+# ---------------------------------------------------------------------------
+# /buy <ticker> <shares> <avg_cost>
+# ---------------------------------------------------------------------------
+
+
+async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args
+    if not args or len(args) < 3:
+        await update.message.reply_text(
+            "Usage: `/buy AAPL 10 150`\n\\(ticker, shares, avg cost\\)",
+            parse_mode="MarkdownV2",
+        )
+        return
+
+    ticker = args[0].upper()
+    try:
+        shares = float(args[1])
+        avg_cost = float(args[2].replace(",", ""))
+    except ValueError:
+        await update.message.reply_text("Invalid numbers\\. Usage: `/buy AAPL 10 150`", parse_mode="MarkdownV2")
+        return
+
+    conn = get_connection()
+    try:
+        add_holding(conn, ticker, shares, avg_cost)
+    finally:
+        conn.close()
+
+    total_cost = shares * avg_cost
+    await update.message.reply_text(
+        f"✅ *Added {escape_md(ticker)}*\n"
+        f"  {escape_md(f'{shares:.4g}')} shares @ {escape_md(f'${avg_cost:.2f}')}\n"
+        f"  Total: {escape_md(f'${total_cost:,.2f}')}",
+        parse_mode="MarkdownV2",
+    )
+
+
+# ---------------------------------------------------------------------------
+# /sell <ticker>
+# ---------------------------------------------------------------------------
+
+
+async def cmd_sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args
+    if not args:
+        await update.message.reply_text("Usage: `/sell AAPL`", parse_mode="MarkdownV2")
+        return
+
+    ticker = args[0].upper()
+    conn = get_connection()
+    try:
+        remove_holding(conn, ticker)
+    finally:
+        conn.close()
+
+    await update.message.reply_text(f"✅ Removed *{escape_md(ticker)}* from portfolio\\.", parse_mode="MarkdownV2")
+
+
+# ---------------------------------------------------------------------------
+# /price <ticker> (/pr)
+# ---------------------------------------------------------------------------
+
+
+async def cmd_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args
+    if not args:
+        await update.message.reply_text("Usage: `/price AAPL`", parse_mode="MarkdownV2")
+        return
+
+    ticker = args[0].upper()
+    conn = get_connection()
+    try:
+        data = get_stock_price(conn, ticker, force_refresh=True)
+    finally:
+        conn.close()
+
+    if not data:
+        await update.message.reply_text(f"Could not fetch price for *{escape_md(ticker)}*\\.", parse_mode="MarkdownV2")
+        return
+
+    price = data["price"]
+    day_chg = data.get("day_change_pct", 0)
+    day_icon = "🟢" if day_chg >= 0 else "🔴"
+    lines = [
+        f"💲 *{escape_md(ticker)}*",
+        "━━━━━━━━━━━━━━",
+        f"  Price:   {escape_md(f'${price:.2f}')}",
+        f"  Day:     {day_icon} {escape_md(f'{day_chg:+.2f}%')}",
+    ]
+    if data.get("high_52w"):
+        low52 = data["low_52w"]
+        high52 = data["high_52w"]
+        lines.append(f"  52W:     {escape_md(f'${low52:.2f} – ${high52:.2f}')}")
+        drop = ((high52 - price) / high52 * 100)
+        lines.append(f"  vs High: {escape_md(f'-{drop:.1f}%')}")
+
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+
+
+# ---------------------------------------------------------------------------
+# /watch <ticker> [threshold%]
+# ---------------------------------------------------------------------------
+
+
+async def cmd_watch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args
+    if not args:
+        # Show watchlist
+        conn = get_connection()
+        try:
+            wl = get_watchlist(conn)
+        finally:
+            conn.close()
+
+        if not wl:
+            await update.message.reply_text(
+                "👀 Watchlist is empty\\.\nAdd: `/watch AAPL 5` \\(ticker, drop %\\)",
+                parse_mode="MarkdownV2",
+            )
+            return
+
+        lines = ["👀 *Dip Watchlist*", "━━━━━━━━━━━━━━"]
+        for item in wl:
+            tk = item["ticker"]
+            thr = item["dip_threshold_pct"]
+            lines.append(f"  `{tk:<6}` alert at {escape_md(f'≥{thr}%')} drop")
+        await update.message.reply_text(
+            "\n".join(lines).replace("\\`", "`"),
+            parse_mode="MarkdownV2",
+        )
+        return
+
+    ticker = args[0].upper()
+    threshold = 5.0
+    if len(args) >= 2:
+        try:
+            threshold = float(args[1])
+        except ValueError:
+            pass
+
+    conn = get_connection()
+    try:
+        add_to_watchlist(conn, ticker, threshold)
+    finally:
+        conn.close()
+
+    await update.message.reply_text(
+        f"✅ Watching *{escape_md(ticker)}* — alert at {escape_md(f'≥{threshold}%')} drop from 52W high\\.",
+        parse_mode="MarkdownV2",
+    )
+
+
+# ---------------------------------------------------------------------------
+# /unwatch <ticker>
+# ---------------------------------------------------------------------------
+
+
+async def cmd_unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args
+    if not args:
+        await update.message.reply_text("Usage: `/unwatch AAPL`", parse_mode="MarkdownV2")
+        return
+
+    ticker = args[0].upper()
+    conn = get_connection()
+    try:
+        remove_from_watchlist(conn, ticker)
+    finally:
+        conn.close()
+
+    await update.message.reply_text(f"✅ Removed *{escape_md(ticker)}* from watchlist\\.", parse_mode="MarkdownV2")
+
+
+# ---------------------------------------------------------------------------
+# /dips
+# ---------------------------------------------------------------------------
+
+
+async def cmd_dips(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    conn = get_connection()
+    try:
+        new_alerts = check_dips(conn)
+        pending = get_pending_alerts(conn)
+    finally:
+        conn.close()
+
+    if not pending:
+        await update.message.reply_text(
+            "✅ No dip alerts\\! All watchlist stocks are above their thresholds\\.",
+            parse_mode="MarkdownV2",
+        )
+        return
+
+    lines = ["🔔 *Dip Alerts*", "━━━━━━━━━━━━"]
+    for a in pending[:10]:
+        tk = a["ticker"]
+        dp = a["drop_pct"]
+        pa = a["price_at_alert"]
+        rh = a["recent_high"]
+        lines.append(
+            f"  📉 *{escape_md(tk)}*  {escape_md(f'-{dp}%')} from high\n"
+            f"     {escape_md(f'${pa:.2f}')} \\(high: {escape_md(f'${rh:.2f}')}\\)"
+        )
+
+    if len(pending) > 10:
+        lines.append(f"\n_{escape_md(f'...and {len(pending) - 10} more')}_")
+
+    await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+
+
+# ---------------------------------------------------------------------------
 # Natural language handler
 # ---------------------------------------------------------------------------
 
@@ -651,6 +942,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await cmd_expenses(update, context)
     elif any(w in msg for w in ("emergency", "safety net", "emergency fund")):
         await cmd_emergency(update, context)
+    elif any(w in msg for w in ("portfolio", "stocks", "holdings", "investment", "investing")):
+        await cmd_portfolio(update, context)
+    elif any(w in msg for w in ("watchlist", "watch list", "watching")):
+        await cmd_watch(update, context)
+    elif any(w in msg for w in ("dip", "dips", "alert", "alerts")):
+        await cmd_dips(update, context)
     elif any(w in msg for w in ("rate", "forex", "dollar", "rupee", "usd", "inr")):
         await cmd_rate(update, context)
     elif any(w in msg for w in ("save", "snapshot")):
@@ -701,6 +998,15 @@ def main() -> None:
     app.add_handler(CommandHandler("update",    auth(cmd_update)))
     app.add_handler(CommandHandler("expenses",  auth(cmd_expenses)))
     app.add_handler(CommandHandler("e",         auth(cmd_expenses)))
+    app.add_handler(CommandHandler("portfolio", auth(cmd_portfolio)))
+    app.add_handler(CommandHandler("p",         auth(cmd_portfolio)))
+    app.add_handler(CommandHandler("buy",       auth(cmd_buy)))
+    app.add_handler(CommandHandler("sell",      auth(cmd_sell)))
+    app.add_handler(CommandHandler("price",     auth(cmd_price)))
+    app.add_handler(CommandHandler("pr",        auth(cmd_price)))
+    app.add_handler(CommandHandler("watch",     auth(cmd_watch)))
+    app.add_handler(CommandHandler("unwatch",   auth(cmd_unwatch)))
+    app.add_handler(CommandHandler("dips",      auth(cmd_dips)))
 
     # Natural language fallback (non-command text messages)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, auth(handle_text)))

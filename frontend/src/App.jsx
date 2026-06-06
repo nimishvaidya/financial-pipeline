@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import PipelineFlow from "./components/PipelineFlow";
+import Portfolio from "./components/Portfolio";
 import Settings from "./components/Settings";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "📊" },
   { id: "pipeline", label: "Pipeline", icon: "🔀" },
+  { id: "portfolio", label: "Portfolio", icon: "💹" },
   { id: "history", label: "History", icon: "📈" },
   { id: "settings", label: "Settings", icon: "⚙️" },
 ];
@@ -237,6 +239,7 @@ function App() {
               <Dashboard data={pipelineData} onRefresh={fetchPipelineData} dark={dark} />
             )}
             {page === "pipeline" && <PipelineFlow data={pipelineData} dark={dark} />}
+            {page === "portfolio" && <Portfolio />}
             {page === "history" && <History dark={dark} />}
             {page === "settings" && (
               <Settings onSaved={fetchPipelineData} dark={dark} />

@@ -89,3 +89,38 @@ Personal dev diary for the Financial Pipeline project.
 - Investment portfolio tracking + buy-the-dip logic
 - Multi-currency with live exchange rates
 - Section 80E tax tracker for education loan interest
+
+---
+
+## Session 3 — June 5, 2026
+
+### What we did
+
+**Sprint 5: Live Forex + Telegram + Income Timeline + Recurring Expenses**
+- Added ExchangeRate-API integration with daily SQLite caching
+- Built Telegram bot with full pipeline control (15+ commands)
+- Income timeline with calendar view and extra income entries
+- Recurring expenses display (3 views: cards, list, calendar)
+
+**Sprint 6: Investment Layer**
+- Built `portfolio.py` — holdings CRUD, live prices from Yahoo Finance, portfolio summary
+- Stock price caching (15-minute window) with graceful fallback
+- Buy-the-dip engine — watchlist with configurable drop thresholds, dip detection from 52-week high
+- Dip alert system with deduplication and acknowledgment
+- 11 new API endpoints for portfolio, watchlist, and alerts
+- Portfolio dashboard page — summary cards, holdings table with real-time P/L, price lookup
+- Three-tab UI: Holdings, Watchlist, Dip Alerts
+- 8 new Telegram commands: /portfolio, /buy, /sell, /price, /watch, /unwatch, /dips
+- Natural language support: "my stocks", "watchlist", "dips"
+
+### Decisions made
+- **Yahoo Finance free endpoint** — no API key needed, good enough for personal use
+- **15-min price cache** — balance between freshness and not hammering the API
+- **Dip from 52-week high** — simpler than rolling window, catches meaningful drops
+- **Weighted avg cost on add** — if you add more shares, avg cost recalculates automatically
+- **Manual tracking** — no brokerage API integration yet (Robinhood API is unofficial)
+
+### What's next (Sprint 7+)
+- Section 80E tax tracker for education loan interest
+- Historical portfolio value chart
+- Auto dip-check on a schedule (cron or bot polling)

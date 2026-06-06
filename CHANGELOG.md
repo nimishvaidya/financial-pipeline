@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-06-05
+
+### Added
+- Investment portfolio tracking — add/remove holdings with weighted avg cost
+- Live stock prices from Yahoo Finance with 15-minute caching
+- Portfolio dashboard page — summary cards, holdings table, gain/loss per ticker
+- Dip watchlist — monitor stocks for drops from 52-week high
+- Dip alert system with configurable thresholds per ticker
+- Quick price lookup widget in portfolio page
+- Three-tab UI: Holdings | Watchlist | Dip Alerts
+- Telegram commands: /portfolio, /buy, /sell, /price, /watch, /unwatch, /dips
+- Natural language support for portfolio queries ("my stocks", "watchlist", "dips")
+
 ## [0.3.0] - 2026-05-14
 
 ### Added
