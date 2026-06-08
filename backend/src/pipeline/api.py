@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -41,6 +42,7 @@ from pipeline.portfolio import (
     acknowledge_alert,
     get_stock_price,
 )
+from pipeline.chat import check_ollama, chat, chat_stream
 from pipeline.robinhood_parser import parse_robinhood_pdf
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
@@ -566,6 +568,40 @@ def parse_local_robinhood(path: str = ""):
         return {"status": "ok", "filename": pdf_path.name, "data": parsed}
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+# --- Chat endpoints ---
+
+
+class ChatRequest(BaseModel):
+    messages: list[dict]
+    model: str = "llama3.2"
+
+
+@app.get("/api/chat/status")
+def chat_status():
+    """Check if Ollama is running and list available models."""
+    return check_ollama()
+
+
+@app.post("/api/chat")
+def chat_endpoint(req: ChatRequest):
+    """Send a message to the portfolio chatbot."""
+    response = chat(req.messages, model=req.model)
+    return {"response": response}
+
+
+@app.post("/api/chat/stream")
+def chat_stream_endpoint(req: ChatRequest):
+    """Stream a response from the portfolio chatbot."""
+    from fastapi.responses import StreamingResponse
+
+    def generate():
+        for chunk in chat_stream(req.messages, model=req.model):
+            yield f"data: {json.dumps({'content': chunk})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 # --- Update endpoints ---

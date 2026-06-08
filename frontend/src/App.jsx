@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ChatDrawer from "./components/ChatDrawer";
 import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import PipelineFlow from "./components/PipelineFlow";
@@ -24,6 +25,7 @@ function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -250,6 +252,23 @@ function App() {
           </div>
         </main>
       </div>
+
+      {/* Chat FAB */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center text-white text-xl shadow-lg transition-transform hover:scale-110 active:scale-95"
+        style={{
+          background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+          boxShadow: "0 4px 20px rgba(59,130,246,0.4)",
+          display: chatOpen ? "none" : "flex",
+        }}
+        title="Chat with your portfolio"
+      >
+        💬
+      </button>
+
+      {/* Chat Drawer */}
+      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }

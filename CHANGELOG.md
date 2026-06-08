@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-06-07
+
+### Added
+- Portfolio chatbot powered by Ollama (fully local LLM, no API keys)
+- Chat backend gathers all financial context: income, budget, balances, investments, Robinhood data
+- Streaming SSE endpoint for real-time response display
+- Ollama status check endpoint with model auto-detection
+- Sliding chat drawer accessible from any page via floating button
+- Suggestion chips for common financial questions
+- Chat message history with user/assistant bubbles
+- Auto-detects available Ollama models (prefers llama3.2)
+- Graceful offline handling when Ollama isn't running
+
 ## [0.6.0] - 2026-06-07
 
 ### Added

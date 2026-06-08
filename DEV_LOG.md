@@ -8,6 +8,14 @@ Personal dev diary for the Financial Pipeline project.
 
 ### What we did
 
+**Sprint 8: Portfolio Chatbot**
+- Built chat.py module — gathers all financial context (config, balances, portfolio, Robinhood) into a system prompt
+- Ollama integration: non-streaming + SSE streaming endpoints via localhost:11434
+- ChatDrawer.jsx — sliding sidebar drawer with streaming response, suggestion chips, Ollama status indicator
+- Floating chat button (💬) accessible from every page
+- Auto-detects installed Ollama models, prefers llama3.2
+- Graceful offline mode with install instructions when Ollama isn't running
+
 **Sprint 7: Robinhood Statement Visualization**
 - Built PDF parser (`robinhood_parser.py`) using pdfplumber to extract data from Robinhood monthly statements
 - Parses: account summary, 61 holdings, 92 transactions, 19 pending trades
