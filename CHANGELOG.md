@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-06-07
+
+### Added
+- Robinhood monthly statement PDF parser (pdfplumber)
+- Extracts holdings (61), transactions (92), pending trades from statement
+- Computes derived stats: ETF/stock split, top 10 concentration, dividend analysis
+- API endpoints: upload, list, retrieve, parse-local for Robinhood statements
+- Robinhood dashboard page with 4 tabs: Overview, Holdings, Transactions, Dividends
+- Interactive treemap for top 10 holdings visualization
+- Stocks vs ETFs pie chart with value breakdown
+- Sortable holdings table with weight bars and yield display
+- Daily investment bar chart on transactions tab
+- Dividend income by ticker chart and top yielders table
+- Drag-and-drop PDF upload with parsing feedback
+- Monthly activity summary: invested, dividends, deposits, cashback
+
+### Dependencies
+- Added pdfplumber>=0.11.0 for PDF text/table extraction
+- Added python-multipart>=0.0.9 for file upload handling
+
 ## [0.5.0] - 2026-06-05
 
 ### Added

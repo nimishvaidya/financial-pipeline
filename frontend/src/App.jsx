@@ -3,12 +3,14 @@ import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import PipelineFlow from "./components/PipelineFlow";
 import Portfolio from "./components/Portfolio";
+import RobinhoodReport from "./components/RobinhoodReport";
 import Settings from "./components/Settings";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "📊" },
   { id: "pipeline", label: "Pipeline", icon: "🔀" },
   { id: "portfolio", label: "Portfolio", icon: "💹" },
+  { id: "robinhood", label: "Robinhood", icon: "🪶" },
   { id: "history", label: "History", icon: "📈" },
   { id: "settings", label: "Settings", icon: "⚙️" },
 ];
@@ -240,6 +242,7 @@ function App() {
             )}
             {page === "pipeline" && <PipelineFlow data={pipelineData} dark={dark} />}
             {page === "portfolio" && <Portfolio />}
+            {page === "robinhood" && <RobinhoodReport />}
             {page === "history" && <History dark={dark} />}
             {page === "settings" && (
               <Settings onSaved={fetchPipelineData} dark={dark} />

@@ -4,6 +4,33 @@ Personal dev diary for the Financial Pipeline project.
 
 ---
 
+## Session 4 — June 7, 2026
+
+### What we did
+
+**Sprint 7: Robinhood Statement Visualization**
+- Built PDF parser (`robinhood_parser.py`) using pdfplumber to extract data from Robinhood monthly statements
+- Parses: account summary, 61 holdings, 92 transactions, 19 pending trades
+- Computes derived stats: ETF vs stock split, top 10 concentration, dividend payers, DRIP detection
+- Added 4 API endpoints for PDF upload/retrieval/parsing
+- Built full React dashboard (`RobinhoodReport.jsx`, 629 lines) with recharts visualizations
+- 4 tabs: Overview (treemap + pie charts + activity), Holdings (sortable table), Transactions (bar chart + filters), Dividends (by-ticker chart + top yielders)
+- Drag-and-drop PDF upload with error handling
+- Added to sidebar nav as "Robinhood" page
+
+### Bugs squashed
+- Equities/cash percentage swap in parser — regex picked up cash % instead of equities; fixed by computing from actual values
+- DRIP detection proximity check — changed to forward-only search (Reinvestment text appears after buy line)
+
+### Tech notes
+- pdfplumber for PDF text extraction (regex-based parsing matching Robinhood's specific format)
+- python-multipart for FastAPI file upload support
+- In-memory parsed statement cache keyed by filename
+- Recharts Treemap, PieChart, BarChart for visualizations
+- CSS variables throughout for dark/light mode consistency
+
+---
+
 ## Session 1 — May 12, 2026
 
 ### What we did

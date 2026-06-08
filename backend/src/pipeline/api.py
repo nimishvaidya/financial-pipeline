@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -41,6 +41,7 @@ from pipeline.portfolio import (
     acknowledge_alert,
     get_stock_price,
 )
+from pipeline.robinhood_parser import parse_robinhood_pdf
 from pipeline.engine import PipelineEngine
 from pipeline.models import PipelineConfig, PipelineOutput
 from pipeline.projections import calculate_emergency_fund_projection, calculate_loan_payoff
@@ -489,6 +490,82 @@ def ack_alert(alert_id: int):
         return {"status": "ok"}
     finally:
         conn.close()
+
+
+# --- Robinhood Statement endpoints ---
+
+# Store parsed statements in memory (keyed by filename)
+_parsed_statements: dict[str, dict] = {}
+
+DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
+
+
+@app.post("/api/robinhood/upload")
+async def upload_robinhood_statement(file: UploadFile = File(...)):
+    """Upload and parse a Robinhood monthly statement PDF."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    # Save to data directory
+    DATA_DIR.mkdir(exist_ok=True)
+    save_path = DATA_DIR / f"robinhood_{file.filename}"
+    content = await file.read()
+    save_path.write_bytes(content)
+
+    try:
+        stmt = parse_robinhood_pdf(save_path)
+        parsed = stmt.to_dict()
+        _parsed_statements[file.filename] = parsed
+        return {"status": "ok", "filename": file.filename, "data": parsed}
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Failed to parse PDF: {e}") from e
+
+
+@app.get("/api/robinhood/statements")
+def list_robinhood_statements():
+    """List available parsed statements."""
+    return {"statements": list(_parsed_statements.keys())}
+
+
+@app.get("/api/robinhood/statement/{filename}")
+def get_robinhood_statement(filename: str):
+    """Get a previously parsed statement."""
+    if filename not in _parsed_statements:
+        # Try to parse from disk
+        save_path = DATA_DIR / f"robinhood_{filename}"
+        if save_path.exists():
+            try:
+                stmt = parse_robinhood_pdf(save_path)
+                _parsed_statements[filename] = stmt.to_dict()
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
+        else:
+            raise HTTPException(status_code=404, detail="Statement not found")
+    return _parsed_statements[filename]
+
+
+@app.post("/api/robinhood/parse-local")
+def parse_local_robinhood(path: str = ""):
+    """Parse a Robinhood PDF from the data directory."""
+    if not path:
+        # Find the most recent PDF in data/
+        pdfs = sorted(DATA_DIR.glob("robinhood_*.pdf")) if DATA_DIR.exists() else []
+        if not pdfs:
+            raise HTTPException(status_code=404, detail="No Robinhood PDFs found in data/")
+        pdf_path = pdfs[-1]
+    else:
+        pdf_path = Path(path)
+
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {pdf_path}")
+
+    try:
+        stmt = parse_robinhood_pdf(pdf_path)
+        parsed = stmt.to_dict()
+        _parsed_statements[pdf_path.name] = parsed
+        return {"status": "ok", "filename": pdf_path.name, "data": parsed}
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 # --- Update endpoints ---
